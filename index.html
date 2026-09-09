@@ -9,21 +9,30 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     html, body {
       height: 100%;
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
-    #map {
-      height: 100%;
-      width: 100%;
+    #map { height: 100%; width: 100%; }
+
+    /* Local File Picker (for testing directly via file://) */
+    #local-bar {
+      display: none;
+      position: absolute;
+      top: 12px;
+      left: 60px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 8px 14px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 13px;
     }
-    
-    /* Popup styling */
+
+    /* Popup card styling */
     .custom-popup .leaflet-popup-content-wrapper {
       border-radius: 8px;
       padding: 8px;
@@ -60,9 +69,7 @@
       width: 100%;
       border-collapse: collapse;
     }
-    .popup-table tr:nth-child(even) {
-      background-color: #f8f9fa;
-    }
+    .popup-table tr:nth-child(even) { background-color: #f8f9fa; }
     .popup-table td {
       padding: 4px 6px;
       border-bottom: 1px solid #edf2f7;
@@ -73,23 +80,32 @@
       color: #333;
       width: 45%;
     }
-    .popup-table td.val {
-      color: #111;
-    }
+    .popup-table td.val { color: #111; }
   </style>
 </head>
 <body>
+
+<div id="local-bar">
+  <strong>Preview Mode:</strong> Select Maidams.geojson: 
+  <input type="file" id="geojson-picker" accept=".geojson,.json" />
+</div>
 
 <div id="map"></div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Proj4js for UTM 46N Reprojection -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
 <script>
-  // Initialize Map focused on eastern Assam
+  // 1. Define UTM Zone 46N (EPSG:32646) and WGS84 (EPSG:4326)
+  proj4.defs("EPSG:32646", "+proj=utm +zone=46 +datum=WGS84 +units=m +no_defs");
+  proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
+
+  // 2. Initialize Map (Default centered in Assam)
   const map = L.map('map').setView([26.9, 94.6], 10);
 
-  // 1. Google Basemaps
+  // 3. Basemaps
   const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
     maxZoom: 20,
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
@@ -114,7 +130,6 @@
     "Google Streets": googleStreets
   }, null, { position: 'topright' }).addTo(map);
 
-  // 2. Point Marker Styling
   const markerOptions = {
     radius: 7,
     fillColor: "#ff3838",
@@ -124,67 +139,100 @@
     fillOpacity: 0.9
   };
 
-  function addRow(label, value) {
-    if (value === undefined || value === null || value === '') return '';
-    return `<tr><td class="label">${label}</td><td class="val">${value}</td></tr>`;
+  function addRow(label, val) {
+    if (val === undefined || val === null || val === '') return '';
+    return `<tr><td class="label">${label}</td><td class="val">${val}</td></tr>`;
   }
 
-  // 3. Load GeoJSON
+  // 4. Load & Process Features
+  function loadData(data) {
+    if (data.features) {
+      data.features.forEach(f => {
+        if (f.geometry && f.geometry.coordinates) {
+          const coords = f.geometry.coordinates;
+          // If Easting/Northing is large (> 180), it's in UTM meters: convert to WGS84 [lon, lat]
+          if (Math.abs(coords[0]) > 180 || Math.abs(coords[1]) > 90) {
+            const converted = proj4("EPSG:32646", "EPSG:4326", [coords[0], coords[1]]);
+            f.geometry.coordinates = converted;
+          }
+        }
+      });
+    }
+
+    const geoLayer = L.geoJSON(data, {
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, markerOptions);
+      },
+      onEachFeature: function (feature, layer) {
+        const p = feature.properties || {};
+
+        // Tooltip
+        const tooltipLabel = p.Site_Name 
+          ? `${p.Site_Name} (${p.UID || p.Name || ''})`
+          : (p.UID || p.Name || 'Maidam');
+        layer.bindTooltip(`<b>${tooltipLabel}</b>`, { direction: 'top', offset: [0, -6] });
+
+        // Popup
+        let content = `<div class="popup-container">`;
+        content += `<div class="popup-title">${p.Site_Name || 'Maidam Site'}</div>`;
+        if (p.Village || p.District) {
+          content += `<div class="popup-subtitle">${[p.Village, p.District].filter(Boolean).join(', ')}</div>`;
+        }
+
+        // Show DMS format
+        if (p.X || p.Y) {
+          content += `<div class="coord-box">`;
+          if (p.Y) content += `<b>Lat:</b> ${p.Y}<br>`;
+          if (p.X) content += `<b>Long:</b> ${p.X}`;
+          content += `</div>`;
+        }
+
+        content += `<table class="popup-table">`;
+        content += addRow('UID', p.UID || p.Name);
+        content += addRow('Location ID', p.Location_l);
+        content += addRow('Sub ID', p.sub_id);
+        content += addRow('Area', p.AREA ? `${p.AREA} sq m` : '');
+        content += addRow('Diameter (DIA)', p.DIA ? `${p.DIA} m` : '');
+        content += addRow('Height (HT)', p.HT ? `${p.HT} m` : '');
+        content += addRow('Protected', p.Whether_Pr);
+        content += `</table></div>`;
+
+        layer.bindPopup(content, { className: 'custom-popup' });
+      }
+    }).addTo(map);
+
+    // Zoom directly to the points
+    if (geoLayer.getLayers().length > 0) {
+      map.fitBounds(geoLayer.getBounds(), { padding: [40, 40] });
+    } else {
+      alert("No valid points found in the GeoJSON file!");
+    }
+  }
+
+  // 5. Automatic Fetch (GitHub Pages / Local Server)
   fetch('Maidams.geojson')
     .then(res => {
-      if (!res.ok) throw new Error('Failed to load Maidams.geojson');
+      if (!res.ok) throw new Error('Cannot load Maidams.geojson');
       return res.json();
     })
-    .then(data => {
-      const geoLayer = L.geoJSON(data, {
-        pointToLayer: function (feature, latlng) {
-          return L.circleMarker(latlng, markerOptions);
-        },
-        onEachFeature: function (feature, layer) {
-          const p = feature.properties || {};
+    .then(data => loadData(data))
+    .catch(err => {
+      console.warn('Direct fetch failed. Opening manual selector.');
+      document.getElementById('local-bar').style.display = 'block';
+    });
 
-          // Tooltip on Hover
-          const tooltipLabel = p.Site_Name 
-            ? `${p.Site_Name} (${p.UID || p.Name || ''})`
-            : (p.UID || p.Name || 'Maidam');
-          layer.bindTooltip(`<b>${tooltipLabel}</b>`, { direction: 'top', offset: [0, -6] });
-
-          // Structured Popup
-          let content = `<div class="popup-container">`;
-          content += `<div class="popup-title">${p.Site_Name || 'Maidam Site'}</div>`;
-          
-          if (p.Village || p.District) {
-            content += `<div class="popup-subtitle">${[p.Village, p.District].filter(Boolean).join(', ')}</div>`;
-          }
-
-          // DMS Coordinates Display Block
-          if (p.X || p.Y) {
-            content += `<div class="coord-box">`;
-            if (p.Y) content += `<b>Lat:</b> ${p.Y}<br>`;
-            if (p.X) content += `<b>Long:</b> ${p.X}`;
-            content += `</div>`;
-          }
-
-          content += `<table class="popup-table">`;
-          content += addRow('UID', p.UID || p.Name);
-          content += addRow('Location ID', p.Location_l);
-          content += addRow('Sub ID', p.sub_id);
-          content += addRow('Area', p.AREA ? `${p.AREA} sq m` : '');
-          content += addRow('Diameter (DIA)', p.DIA ? `${p.DIA} m` : '');
-          content += addRow('Height (HT)', p.HT ? `${p.HT} m` : '');
-          content += addRow('Protected', p.Whether_Pr);
-          content += `</table></div>`;
-
-          layer.bindPopup(content, { className: 'custom-popup' });
-        }
-      }).addTo(map);
-
-      // Fit map extent to data points
-      if (geoLayer.getLayers().length > 0) {
-        map.fitBounds(geoLayer.getBounds(), { padding: [40, 40] });
-      }
-    })
-    .catch(err => console.error('Error:', err));
+  // Local File Selector Fallback
+  document.getElementById('geojson-picker').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const data = JSON.parse(evt.target.result);
+      loadData(data);
+      document.getElementById('local-bar').style.display = 'none';
+    };
+    reader.readAsText(file);
+  });
 </script>
 
 </body>
