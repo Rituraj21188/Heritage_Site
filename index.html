@@ -3,109 +3,289 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Maidams Interactive Map</title>
+  <title>Assam Maidams GIS Portal</title>
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    * { box-sizing: border-box; }
-    html, body {
-      height: 100%;
+    :root {
+      --primary: #c0392b;
+      --primary-dark: #962d22;
+      --accent: #f39c12;
+      --dark: #2c3e50;
+      --light: #f8f9fa;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
-    #map { height: 100%; width: 100%; }
 
-    /* Local File Picker (for testing directly via file://) */
-    #local-bar {
+    html, body {
+      height: 100%;
+      width: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #app-container {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      position: relative;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Floating UI Control Panel */
+    #ui-panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 1000;
+      width: 320px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      transition: transform 0.3s ease;
+    }
+
+    .panel-header {
+      margin-bottom: 12px;
+    }
+
+    .panel-header h2 {
+      font-size: 18px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-header p {
+      font-size: 11px;
+      color: #7f8c8d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Search & Filter Controls */
+    .search-box {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 10px;
+    }
+
+    .search-box:focus {
+      border-color: var(--primary);
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .filter-btn {
+      flex: 1;
+      padding: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .stats-badge {
+      font-size: 12px;
+      color: var(--dark);
+      font-weight: 500;
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+    }
+
+    /* Marker Pulse & Styling */
+    .custom-marker {
+      transition: transform 0.2s ease-out;
+    }
+
+    .custom-marker:hover {
+      transform: scale(1.35);
+      z-index: 99999 !important;
+    }
+
+    /* Popup Modal Card Styling */
+    .custom-popup .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+    }
+
+    .custom-popup .leaflet-popup-content {
+      margin: 0;
+      width: 290px !important;
+      font-size: 13px;
+    }
+
+    .popup-hero {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 12px 14px;
+    }
+
+    .popup-hero h3 {
+      font-size: 15px;
+      margin-bottom: 2px;
+      line-height: 1.3;
+    }
+
+    .popup-hero span {
+      font-size: 11px;
+      opacity: 0.85;
+    }
+
+    .coord-banner {
+      background: #2f3542;
+      color: #70a1ff;
+      padding: 6px 12px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .popup-details {
+      padding: 10px 14px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 12px;
+    }
+
+    .data-row:last-child {
+      border-bottom: none;
+    }
+
+    .data-label {
+      color: #7f8c8d;
+      font-weight: 500;
+    }
+
+    .data-val {
+      font-weight: 600;
+      color: var(--dark);
+      text-align: right;
+    }
+
+    .badge-prot {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .badge-yes { background: #d4edda; color: #155724; }
+    .badge-no { background: #f8d7da; color: #721c24; }
+
+    /* Local File Loader Fallback */
+    #file-alert {
       display: none;
       position: absolute;
-      top: 12px;
-      left: 60px;
+      top: 15px;
+      right: 15px;
       z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 8px 14px;
-      border-radius: 6px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      font-size: 13px;
-    }
-
-    /* Popup card styling */
-    .custom-popup .leaflet-popup-content-wrapper {
+      background: white;
+      padding: 10px 15px;
       border-radius: 8px;
-      padding: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-    }
-    .popup-container {
-      min-width: 250px;
-      max-width: 320px;
-      font-size: 13px;
-    }
-    .popup-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #b71540;
-      margin: 0 0 4px 0;
-      border-bottom: 2px solid #f8d7da;
-      padding-bottom: 4px;
-    }
-    .popup-subtitle {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
       font-size: 12px;
-      color: #555;
-      margin-bottom: 8px;
     }
-    .coord-box {
-      background: #f1f2f6;
-      border-left: 3px solid #b71540;
-      padding: 6px 8px;
-      margin-bottom: 8px;
-      font-family: Consolas, monospace;
-      font-size: 12px;
-      color: #2f3542;
-    }
-    .popup-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .popup-table tr:nth-child(even) { background-color: #f8f9fa; }
-    .popup-table td {
-      padding: 4px 6px;
-      border-bottom: 1px solid #edf2f7;
-      vertical-align: top;
-    }
-    .popup-table td.label {
-      font-weight: 600;
-      color: #333;
-      width: 45%;
-    }
-    .popup-table td.val { color: #111; }
   </style>
 </head>
 <body>
 
-<div id="local-bar">
-  <strong>Preview Mode:</strong> Select Maidams.geojson: 
-  <input type="file" id="geojson-picker" accept=".geojson,.json" />
-</div>
+<div id="app-container">
+  <!-- Interactive Control Deck -->
+  <div id="ui-panel">
+    <div class="panel-header">
+      <h2>Assam Maidams</h2>
+      <p>Heritage Sites Geographical Register</p>
+    </div>
 
-<div id="map"></div>
+    <input type="text" id="search-input" class="search-box" placeholder="🔍 Search site, UID, or village..." />
+
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="protected">Protected (Y)</button>
+      <button class="filter-btn" data-filter="unprotected">Unprotected (N)</button>
+    </div>
+
+    <div class="stats-badge">
+      <span>Visible Sites:</span>
+      <strong id="site-counter">0</strong>
+    </div>
+  </div>
+
+  <div id="file-alert">
+    <strong>Local Test:</strong> Load Maidams.geojson: 
+    <input type="file" id="manual-file" accept=".geojson" />
+  </div>
+
+  <div id="map"></div>
+</div>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Proj4js for UTM 46N Reprojection -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
 <script>
-  // 1. Define UTM Zone 46N (EPSG:32646) and WGS84 (EPSG:4326)
-  proj4.defs("EPSG:32646", "+proj=utm +zone=46 +datum=WGS84 +units=m +no_defs");
-  proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
+  // 1. STRICT ASSAM BOUNDING BOX CONFIGURATION
+  // Assam approx geographic envelope: South-West [24.0°N, 89.6°E] to North-East [28.2°N, 96.2°E]
+  const assamBounds = L.latLngBounds(
+    L.latLng(23.95, 89.50), // Southwest corner
+    L.latLng(28.30, 96.30)  // Northeast corner
+  );
 
-  // 2. Initialize Map (Default centered in Assam)
-  const map = L.map('map').setView([26.9, 94.6], 10);
+  // Initialize Map locked to Assam
+  const map = L.map('map', {
+    maxBounds: assamBounds,        // Hard limit on panning
+    maxBoundsViscosity: 1.0,       // 1.0 makes bounds completely solid (no elasticity)
+    minZoom: 8,                    // Prevent zooming out to the whole world
+    maxZoom: 20
+  }).fitBounds(assamBounds);
 
-  // 3. Basemaps
+  // 2. BASEMAP LAYERS
   const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
     maxZoom: 20,
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
@@ -118,118 +298,175 @@
     attribution: '&copy; Google Maps'
   });
 
-  const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  const googleTerrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
     maxZoom: 20,
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
     attribution: '&copy; Google Maps'
   });
 
   L.control.layers({
-    "Google Hybrid (Satellite + Labels)": googleHybrid,
-    "Google Satellite (Pure)": googleSatellite,
-    "Google Streets": googleStreets
+    "Google Hybrid": googleHybrid,
+    "Google Satellite": googleSatellite,
+    "Google Terrain": googleTerrain
   }, null, { position: 'topright' }).addTo(map);
 
-  const markerOptions = {
-    radius: 7,
-    fillColor: "#ff3838",
-    color: "#ffffff",
-    weight: 1.5,
-    opacity: 1,
-    fillOpacity: 0.9
-  };
+  // 3. LAYER REPOSITORY & MARKER CREATION
+  let allLayers = [];
+  let currentFilter = 'all';
+  let searchTerm = '';
 
-  function addRow(label, val) {
-    if (val === undefined || val === null || val === '') return '';
-    return `<tr><td class="label">${label}</td><td class="val">${val}</td></tr>`;
+  function getMarkerStyle(isProtected) {
+    const isY = String(isProtected).trim().toUpperCase() === 'Y';
+    return {
+      radius: 7,
+      fillColor: isY ? "#2ed573" : "#ff4757", // Green for Protected, Red for Unprotected
+      color: "#ffffff",
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.9,
+      className: 'custom-marker'
+    };
   }
 
-  // 4. Load & Process Features
-  function loadData(data) {
-    if (data.features) {
-      data.features.forEach(f => {
-        if (f.geometry && f.geometry.coordinates) {
-          const coords = f.geometry.coordinates;
-          // If Easting/Northing is large (> 180), it's in UTM meters: convert to WGS84 [lon, lat]
-          if (Math.abs(coords[0]) > 180 || Math.abs(coords[1]) > 90) {
-            const converted = proj4("EPSG:32646", "EPSG:4326", [coords[0], coords[1]]);
-            f.geometry.coordinates = converted;
-          }
-        }
-      });
-    }
+  function renderPopup(p) {
+    const isProt = String(p.Whether_Pr).trim().toUpperCase() === 'Y';
+    const badgeClass = isProt ? 'badge-yes' : 'badge-no';
+    const badgeText = isProt ? 'Protected Site' : 'Unprotected';
 
-    const geoLayer = L.geoJSON(data, {
+    return `
+      <div class="popup-hero">
+        <h3>${p.Site_Name || 'Unknown Site'}</h3>
+        <span>${p.Village || 'Unknown Village'}, ${p.District || 'Assam'}</span>
+      </div>
+      <div class="coord-banner">
+        LAT: ${p.Y || 'N/A'}<br>
+        LON: ${p.X || 'N/A'}
+      </div>
+      <div class="popup-details">
+        <div class="data-row"><span class="data-label">Status</span><span class="badge-prot ${badgeClass}">${badgeText}</span></div>
+        <div class="data-row"><span class="data-label">UID / ID</span><span class="data-val">${p.UID || p.Name || '-'}</span></div>
+        <div class="data-row"><span class="data-label">Location ID</span><span class="data-val">${p.Location_l || '-'}</span></div>
+        <div class="data-row"><span class="data-label">Sub ID</span><span class="data-val">${p.sub_id || '-'}</span></div>
+        <div class="data-row"><span class="data-label">Mound Area</span><span class="data-val">${p.AREA ? p.AREA + ' m²' : '-'}</span></div>
+        <div class="data-row"><span class="data-label">Diameter</span><span class="data-val">${p.DIA ? p.DIA + ' m' : '-'}</span></div>
+        <div class="data-row"><span class="data-label">Height</span><span class="data-val">${p.HT ? p.HT + ' m' : '-'}</span></div>
+      </div>
+    `;
+  }
+
+  // 4. LOAD & RENDER GEOJSON
+  const geojsonLayerGroup = L.featureGroup().addTo(map);
+
+  function processGeoJSON(data) {
+    geojsonLayerGroup.clearLayers();
+    allLayers = [];
+
+    L.geoJSON(data, {
       pointToLayer: function (feature, latlng) {
-        return L.circleMarker(latlng, markerOptions);
+        // Enforce valid coordinate range within Assam boundary
+        if (!assamBounds.contains(latlng)) return null;
+
+        const p = feature.properties || {};
+        return L.circleMarker(latlng, getMarkerStyle(p.Whether_Pr));
       },
       onEachFeature: function (feature, layer) {
         const p = feature.properties || {};
 
-        // Tooltip
-        const tooltipLabel = p.Site_Name 
-          ? `${p.Site_Name} (${p.UID || p.Name || ''})`
-          : (p.UID || p.Name || 'Maidam');
-        layer.bindTooltip(`<b>${tooltipLabel}</b>`, { direction: 'top', offset: [0, -6] });
+        // Lightweight Hover Tooltip
+        layer.bindTooltip(`<b>${p.Site_Name || 'Maidam'}</b><br><small>${p.UID || ''}</small>`, {
+          direction: 'top',
+          offset: [0, -6]
+        });
 
-        // Popup
-        let content = `<div class="popup-container">`;
-        content += `<div class="popup-title">${p.Site_Name || 'Maidam Site'}</div>`;
-        if (p.Village || p.District) {
-          content += `<div class="popup-subtitle">${[p.Village, p.District].filter(Boolean).join(', ')}</div>`;
-        }
+        // Modal Popup
+        layer.bindPopup(renderPopup(p), { className: 'custom-popup' });
 
-        // Show DMS format
-        if (p.X || p.Y) {
-          content += `<div class="coord-box">`;
-          if (p.Y) content += `<b>Lat:</b> ${p.Y}<br>`;
-          if (p.X) content += `<b>Long:</b> ${p.X}`;
-          content += `</div>`;
-        }
+        // Store reference for search/filtering
+        allLayers.push({
+          layer: layer,
+          properties: p
+        });
 
-        content += `<table class="popup-table">`;
-        content += addRow('UID', p.UID || p.Name);
-        content += addRow('Location ID', p.Location_l);
-        content += addRow('Sub ID', p.sub_id);
-        content += addRow('Area', p.AREA ? `${p.AREA} sq m` : '');
-        content += addRow('Diameter (DIA)', p.DIA ? `${p.DIA} m` : '');
-        content += addRow('Height (HT)', p.HT ? `${p.HT} m` : '');
-        content += addRow('Protected', p.Whether_Pr);
-        content += `</table></div>`;
-
-        layer.bindPopup(content, { className: 'custom-popup' });
+        layer.addTo(geojsonLayerGroup);
       }
-    }).addTo(map);
+    });
 
-    // Zoom directly to the points
-    if (geoLayer.getLayers().length > 0) {
-      map.fitBounds(geoLayer.getBounds(), { padding: [40, 40] });
-    } else {
-      alert("No valid points found in the GeoJSON file!");
+    applyFilters();
+
+    // Zoom directly to the extent of sites inside Assam
+    if (geojsonLayerGroup.getLayers().length > 0) {
+      map.fitBounds(geojsonLayerGroup.getBounds(), { padding: [50, 50] });
     }
   }
 
-  // 5. Automatic Fetch (GitHub Pages / Local Server)
+  // 5. CLIENT-SIDE INTERACTIVITY (FILTERS & INSTANT SEARCH)
+  function applyFilters() {
+    let count = 0;
+
+    allLayers.forEach(item => {
+      const p = item.properties;
+      const isProt = String(p.Whether_Pr).trim().toUpperCase() === 'Y';
+
+      // Evaluation: Filter status
+      let matchesFilter = true;
+      if (currentFilter === 'protected' && !isProt) matchesFilter = false;
+      if (currentFilter === 'unprotected' && isProt) matchesFilter = false;
+
+      // Evaluation: Search query
+      const searchTarget = `${p.Site_Name || ''} ${p.UID || ''} ${p.Village || ''} ${p.District || ''}`.toLowerCase();
+      let matchesSearch = searchTarget.includes(searchTerm);
+
+      if (matchesFilter && matchesSearch) {
+        if (!geojsonLayerGroup.hasLayer(item.layer)) {
+          geojsonLayerGroup.addLayer(item.layer);
+        }
+        count++;
+      } else {
+        if (geojsonLayerGroup.hasLayer(item.layer)) {
+          geojsonLayerGroup.removeLayer(item.layer);
+        }
+      }
+    });
+
+    document.getElementById('site-counter').innerText = count;
+  }
+
+  // Instant Search Listener
+  document.getElementById('search-input').addEventListener('input', function(e) {
+    searchTerm = e.target.value.toLowerCase().trim();
+    applyFilters();
+  });
+
+  // Filter Buttons Listener
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      currentFilter = this.getAttribute('data-filter');
+      applyFilters();
+    });
+  });
+
+  // 6. INITIAL FETCH
   fetch('Maidams.geojson')
     .then(res => {
       if (!res.ok) throw new Error('Cannot load Maidams.geojson');
       return res.json();
     })
-    .then(data => loadData(data))
+    .then(data => processGeoJSON(data))
     .catch(err => {
-      console.warn('Direct fetch failed. Opening manual selector.');
-      document.getElementById('local-bar').style.display = 'block';
+      console.warn('Network fetch blocked. Showing local fallback.', err);
+      document.getElementById('file-alert').style.display = 'block';
     });
 
-  // Local File Selector Fallback
-  document.getElementById('geojson-picker').addEventListener('change', function(e) {
+  // Fallback for file:/// local testing
+  document.getElementById('manual-file').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(evt) {
-      const data = JSON.parse(evt.target.result);
-      loadData(data);
-      document.getElementById('local-bar').style.display = 'none';
+    reader.onload = evt => {
+      processGeoJSON(JSON.parse(evt.target.result));
+      document.getElementById('file-alert').style.display = 'none';
     };
     reader.readAsText(file);
   });
