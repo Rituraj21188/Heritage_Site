@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Maidams Interactive Map</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    
+    /* Popup styling */
+    .custom-popup .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+    .popup-container {
+      min-width: 250px;
+      max-width: 320px;
+      font-size: 13px;
+    }
+    .popup-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #b71540;
+      margin: 0 0 4px 0;
+      border-bottom: 2px solid #f8d7da;
+      padding-bottom: 4px;
+    }
+    .popup-subtitle {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .coord-box {
+      background: #f1f2f6;
+      border-left: 3px solid #b71540;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      color: #2f3542;
+    }
+    .popup-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .popup-table tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+    .popup-table td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #edf2f7;
+      vertical-align: top;
+    }
+    .popup-table td.label {
+      font-weight: 600;
+      color: #333;
+      width: 45%;
+    }
+    .popup-table td.val {
+      color: #111;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  // Initialize Map focused on eastern Assam
+  const map = L.map('map').setView([26.9, 94.6], 10);
+
+  // 1. Google Basemaps
+  const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; Google Maps'
+  }).addTo(map);
+
+  const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; Google Maps'
+  });
+
+  const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; Google Maps'
+  });
+
+  L.control.layers({
+    "Google Hybrid (Satellite + Labels)": googleHybrid,
+    "Google Satellite (Pure)": googleSatellite,
+    "Google Streets": googleStreets
+  }, null, { position: 'topright' }).addTo(map);
+
+  // 2. Point Marker Styling
+  const markerOptions = {
+    radius: 7,
+    fillColor: "#ff3838",
+    color: "#ffffff",
+    weight: 1.5,
+    opacity: 1,
+    fillOpacity: 0.9
+  };
+
+  function addRow(label, value) {
+    if (value === undefined || value === null || value === '') return '';
+    return `<tr><td class="label">${label}</td><td class="val">${value}</td></tr>`;
+  }
+
+  // 3. Load GeoJSON
+  fetch('Maidams.geojson')
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to load Maidams.geojson');
+      return res.json();
+    })
+    .then(data => {
+      const geoLayer = L.geoJSON(data, {
+        pointToLayer: function (feature, latlng) {
+          return L.circleMarker(latlng, markerOptions);
+        },
+        onEachFeature: function (feature, layer) {
+          const p = feature.properties || {};
+
+          // Tooltip on Hover
+          const tooltipLabel = p.Site_Name 
+            ? `${p.Site_Name} (${p.UID || p.Name || ''})`
+            : (p.UID || p.Name || 'Maidam');
+          layer.bindTooltip(`<b>${tooltipLabel}</b>`, { direction: 'top', offset: [0, -6] });
+
+          // Structured Popup
+          let content = `<div class="popup-container">`;
+          content += `<div class="popup-title">${p.Site_Name || 'Maidam Site'}</div>`;
+          
+          if (p.Village || p.District) {
+            content += `<div class="popup-subtitle">${[p.Village, p.District].filter(Boolean).join(', ')}</div>`;
+          }
+
+          // DMS Coordinates Display Block
+          if (p.X || p.Y) {
+            content += `<div class="coord-box">`;
+            if (p.Y) content += `<b>Lat:</b> ${p.Y}<br>`;
+            if (p.X) content += `<b>Long:</b> ${p.X}`;
+            content += `</div>`;
+          }
+
+          content += `<table class="popup-table">`;
+          content += addRow('UID', p.UID || p.Name);
+          content += addRow('Location ID', p.Location_l);
+          content += addRow('Sub ID', p.sub_id);
+          content += addRow('Area', p.AREA ? `${p.AREA} sq m` : '');
+          content += addRow('Diameter (DIA)', p.DIA ? `${p.DIA} m` : '');
+          content += addRow('Height (HT)', p.HT ? `${p.HT} m` : '');
+          content += addRow('Protected', p.Whether_Pr);
+          content += `</table></div>`;
+
+          layer.bindPopup(content, { className: 'custom-popup' });
+        }
+      }).addTo(map);
+
+      // Fit map extent to data points
+      if (geoLayer.getLayers().length > 0) {
+        map.fitBounds(geoLayer.getBounds(), { padding: [40, 40] });
+      }
+    })
+    .catch(err => console.error('Error:', err));
+</script>
+
+</body>
+</html>
