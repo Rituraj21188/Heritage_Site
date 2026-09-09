@@ -10,12 +10,12 @@
 
   <style>
     :root {
-      --primary: #c0392b;
-      --primary-dark: #962d22;
-      --accent: #f39c12;
-      --dark: #2c3e50;
-      --light: #f8f9fa;
-      --border: #e2e8f0;
+      --neon-prot: #00ff88;
+      --neon-prot-glow: rgba(0, 255, 136, 0.7);
+      --neon-unprot: #ff0055;
+      --neon-unprot-glow: rgba(255, 0, 85, 0.75);
+      --panel-bg: rgba(15, 23, 42, 0.88);
+      --border-color: rgba(255, 255, 255, 0.15);
     }
 
     * {
@@ -29,6 +29,7 @@
       width: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       overflow: hidden;
+      background: #0b0f19;
     }
 
     #app-container {
@@ -42,110 +43,201 @@
       flex: 1;
       height: 100%;
       z-index: 1;
+      background: #090d16;
     }
 
-    /* Floating UI Control Panel */
+    /* ---------------- NEON MOTION & RADAR PULSE ---------------- */
+    .beacon-wrapper {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Central Solid Core */
+    .beacon-core {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      z-index: 3;
+      border: 2px solid #ffffff;
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Expanding Pulse Wave */
+    .beacon-pulse {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      opacity: 0;
+      animation: radarPulse 2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Secondary Constant Static Halo */
+    .beacon-halo {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      opacity: 0.6;
+      z-index: 2;
+    }
+
+    /* Protected Theme (Emerald / Mint Neon) */
+    .neon-protected .beacon-core {
+      background: var(--neon-prot);
+      box-shadow: 0 0 10px var(--neon-prot), 0 0 20px var(--neon-prot);
+    }
+    .neon-protected .beacon-pulse {
+      border: 2px solid var(--neon-prot);
+      box-shadow: inset 0 0 12px var(--neon-prot-glow);
+    }
+    .neon-protected .beacon-halo {
+      background: radial-gradient(circle, var(--neon-prot-glow) 0%, transparent 70%);
+    }
+
+    /* Unprotected Theme (Hot Fuchsia / Crimson Neon) */
+    .neon-unprotected .beacon-core {
+      background: var(--neon-unprot);
+      box-shadow: 0 0 10px var(--neon-unprot), 0 0 20px var(--neon-unprot);
+    }
+    .neon-unprotected .beacon-pulse {
+      border: 2px solid var(--neon-unprot);
+      box-shadow: inset 0 0 12px var(--neon-unprot-glow);
+    }
+    .neon-unprotected .beacon-halo {
+      background: radial-gradient(circle, var(--neon-unprot-glow) 0%, transparent 70%);
+    }
+
+    /* Interactive Hover Effects */
+    .beacon-wrapper:hover .beacon-core {
+      transform: scale(1.6);
+      box-shadow: 0 0 22px #ffffff, 0 0 35px currentColor;
+    }
+
+    @keyframes radarPulse {
+      0% {
+        transform: scale(0.3);
+        opacity: 0.9;
+      }
+      50% {
+        opacity: 0.5;
+      }
+      100% {
+        transform: scale(1.8);
+        opacity: 0;
+      }
+    }
+
+    /* ---------------- GLASS UI CONTROL DECK ---------------- */
     #ui-panel {
       position: absolute;
-      top: 15px;
-      left: 15px;
+      top: 16px;
+      left: 16px;
       z-index: 1000;
       width: 320px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      border-radius: 12px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 14px;
       padding: 16px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      transition: transform 0.3s ease;
-    }
-
-    .panel-header {
-      margin-bottom: 12px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border-color);
+      color: #f1f5f9;
     }
 
     .panel-header h2 {
-      font-size: 18px;
-      color: var(--primary);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #ffffff;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
     .panel-header p {
       font-size: 11px;
-      color: #7f8c8d;
+      color: #94a3b8;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
     }
 
-    /* Search & Filter Controls */
     .search-box {
       width: 100%;
       padding: 9px 12px;
-      border: 1.5px solid var(--border);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
       border-radius: 8px;
       font-size: 13px;
+      color: white;
       outline: none;
-      transition: border-color 0.2s;
+      transition: all 0.2s;
       margin-bottom: 10px;
     }
 
     .search-box:focus {
-      border-color: var(--primary);
+      background: rgba(255, 255, 255, 0.14);
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    .search-box::placeholder {
+      color: #64748b;
     }
 
     .filter-group {
       display: flex;
       gap: 6px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .filter-btn {
       flex: 1;
-      padding: 6px;
+      padding: 7px 4px;
       font-size: 11px;
       font-weight: 600;
-      border: 1px solid var(--border);
-      background: white;
+      border: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.05);
+      color: #94a3b8;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
     }
 
     .filter-btn.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.6);
     }
 
     .stats-badge {
       font-size: 12px;
-      color: var(--dark);
-      font-weight: 500;
+      color: #94a3b8;
       display: flex;
       justify-content: space-between;
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+      padding-top: 10px;
     }
 
-    /* Marker Pulse & Styling */
-    .custom-marker {
-      transition: transform 0.2s ease-out;
-    }
-
-    .custom-marker:hover {
-      transform: scale(1.35);
-      z-index: 99999 !important;
-    }
-
-    /* Popup Modal Card Styling */
+    /* ---------------- POPUP WINDOW STYLING ---------------- */
     .custom-popup .leaflet-popup-content-wrapper {
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(10px);
       border-radius: 12px;
       padding: 0;
       overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-      border: 1px solid var(--border);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
     }
 
     .custom-popup .leaflet-popup-content {
@@ -155,29 +247,31 @@
     }
 
     .popup-hero {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: white;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border-bottom: 2px solid #334155;
       padding: 12px 14px;
     }
 
     .popup-hero h3 {
       font-size: 15px;
+      color: #38bdf8;
+      font-weight: 700;
       margin-bottom: 2px;
-      line-height: 1.3;
     }
 
     .popup-hero span {
       font-size: 11px;
-      opacity: 0.85;
+      color: #94a3b8;
     }
 
     .coord-banner {
-      background: #2f3542;
-      color: #70a1ff;
-      padding: 6px 12px;
-      font-family: 'Courier New', Courier, monospace;
+      background: #020617;
+      color: #00ff88;
+      padding: 7px 14px;
+      font-family: 'SFMono-Regular', Consolas, monospace;
       font-size: 11px;
-      line-height: 1.4;
+      line-height: 1.5;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
     .popup-details {
@@ -189,8 +283,8 @@
     .data-row {
       display: flex;
       justify-content: space-between;
-      padding: 4px 0;
-      border-bottom: 1px dashed var(--border);
+      padding: 5px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
       font-size: 12px;
     }
 
@@ -199,68 +293,78 @@
     }
 
     .data-label {
-      color: #7f8c8d;
+      color: #94a3b8;
       font-weight: 500;
     }
 
     .data-val {
       font-weight: 600;
-      color: var(--dark);
+      color: #f8fafc;
       text-align: right;
     }
 
     .badge-prot {
-      display: inline-block;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
       font-size: 10px;
       font-weight: bold;
     }
-    .badge-yes { background: #d4edda; color: #155724; }
-    .badge-no { background: #f8d7da; color: #721c24; }
+    .badge-yes { 
+      background: rgba(0, 255, 136, 0.15); 
+      color: #00ff88; 
+      border: 1px solid rgba(0, 255, 136, 0.4); 
+    }
+    .badge-no { 
+      background: rgba(255, 0, 85, 0.15); 
+      color: #ff0055; 
+      border: 1px solid rgba(255, 0, 85, 0.4); 
+    }
 
-    /* Local File Loader Fallback */
+    /* Local File Fallback */
     #file-alert {
       display: none;
       position: absolute;
-      top: 15px;
-      right: 15px;
+      top: 16px;
+      right: 16px;
       z-index: 1000;
-      background: white;
-      padding: 10px 15px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      padding: 10px 14px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      border: 1px solid var(--border-color);
       font-size: 12px;
+      color: white;
     }
   </style>
 </head>
 <body>
 
 <div id="app-container">
-  <!-- Interactive Control Deck -->
+  <!-- Interactive Deck -->
   <div id="ui-panel">
     <div class="panel-header">
       <h2>Assam Maidams</h2>
-      <p>Heritage Sites Geographical Register</p>
+      <p>Heritage Geo-Spatial Registry</p>
     </div>
 
-    <input type="text" id="search-input" class="search-box" placeholder="🔍 Search site, UID, or village..." />
+    <input type="text" id="search-input" class="search-box" placeholder="🔍 Search site, UID, village..." />
 
     <div class="filter-group">
-      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn active" data-filter="all">All Sites</button>
       <button class="filter-btn" data-filter="protected">Protected (Y)</button>
       <button class="filter-btn" data-filter="unprotected">Unprotected (N)</button>
     </div>
 
     <div class="stats-badge">
-      <span>Visible Sites:</span>
-      <strong id="site-counter">0</strong>
+      <span>Visible Radar Beacons:</span>
+      <strong id="site-counter" style="color: #38bdf8;">0</strong>
     </div>
   </div>
 
   <div id="file-alert">
-    <strong>Local Test:</strong> Load Maidams.geojson: 
-    <input type="file" id="manual-file" accept=".geojson" />
+    <strong>Local Mode:</strong> Select Maidams.geojson: 
+    <input type="file" id="manual-file" accept=".geojson" style="margin-top: 5px;" />
   </div>
 
   <div id="map"></div>
@@ -270,22 +374,20 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  // 1. STRICT ASSAM BOUNDING BOX CONFIGURATION
-  // Assam approx geographic envelope: South-West [24.0°N, 89.6°E] to North-East [28.2°N, 96.2°E]
+  // 1. BOUNDING BOX: RESTRICT TO ASSAM ONLY
   const assamBounds = L.latLngBounds(
-    L.latLng(23.95, 89.50), // Southwest corner
-    L.latLng(28.30, 96.30)  // Northeast corner
+    L.latLng(23.95, 89.50), // SW Corner
+    L.latLng(28.30, 96.30)  // NE Corner
   );
 
-  // Initialize Map locked to Assam
   const map = L.map('map', {
-    maxBounds: assamBounds,        // Hard limit on panning
-    maxBoundsViscosity: 1.0,       // 1.0 makes bounds completely solid (no elasticity)
-    minZoom: 8,                    // Prevent zooming out to the whole world
+    maxBounds: assamBounds,
+    maxBoundsViscosity: 1.0,
+    minZoom: 8,
     maxZoom: 20
   }).fitBounds(assamBounds);
 
-  // 2. BASEMAP LAYERS
+  // 2. SATELLITE BASEMAP LAYERS
   const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
     maxZoom: 20,
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
@@ -305,27 +407,29 @@
   });
 
   L.control.layers({
-    "Google Hybrid": googleHybrid,
-    "Google Satellite": googleSatellite,
+    "Google Hybrid (Imagery + Roads)": googleHybrid,
+    "Google Satellite (Pure)": googleSatellite,
     "Google Terrain": googleTerrain
   }, null, { position: 'topright' }).addTo(map);
 
-  // 3. LAYER REPOSITORY & MARKER CREATION
-  let allLayers = [];
-  let currentFilter = 'all';
-  let searchTerm = '';
-
-  function getMarkerStyle(isProtected) {
+  // 3. CREATE CUSTOM ANIMATED NEON DIV-ICON
+  function createNeonMarkerIcon(isProtected) {
     const isY = String(isProtected).trim().toUpperCase() === 'Y';
-    return {
-      radius: 7,
-      fillColor: isY ? "#2ed573" : "#ff4757", // Green for Protected, Red for Unprotected
-      color: "#ffffff",
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.9,
-      className: 'custom-marker'
-    };
+    const themeClass = isY ? 'neon-protected' : 'neon-unprotected';
+
+    return L.divIcon({
+      className: 'neon-beacon-icon',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -14],
+      html: `
+        <div class="beacon-wrapper ${themeClass}">
+          <div class="beacon-pulse"></div>
+          <div class="beacon-halo"></div>
+          <div class="beacon-core"></div>
+        </div>
+      `
+    });
   }
 
   function renderPopup(p) {
@@ -355,6 +459,9 @@
   }
 
   // 4. LOAD & RENDER GEOJSON
+  let allLayers = [];
+  let currentFilter = 'all';
+  let searchTerm = '';
   const geojsonLayerGroup = L.featureGroup().addTo(map);
 
   function processGeoJSON(data) {
@@ -363,43 +470,35 @@
 
     L.geoJSON(data, {
       pointToLayer: function (feature, latlng) {
-        // Enforce valid coordinate range within Assam boundary
         if (!assamBounds.contains(latlng)) return null;
-
         const p = feature.properties || {};
-        return L.circleMarker(latlng, getMarkerStyle(p.Whether_Pr));
+        return L.marker(latlng, {
+          icon: createNeonMarkerIcon(p.Whether_Pr)
+        });
       },
       onEachFeature: function (feature, layer) {
         const p = feature.properties || {};
 
-        // Lightweight Hover Tooltip
         layer.bindTooltip(`<b>${p.Site_Name || 'Maidam'}</b><br><small>${p.UID || ''}</small>`, {
           direction: 'top',
-          offset: [0, -6]
+          offset: [0, -12]
         });
 
-        // Modal Popup
         layer.bindPopup(renderPopup(p), { className: 'custom-popup' });
 
-        // Store reference for search/filtering
-        allLayers.push({
-          layer: layer,
-          properties: p
-        });
-
+        allLayers.push({ layer: layer, properties: p });
         layer.addTo(geojsonLayerGroup);
       }
     });
 
     applyFilters();
 
-    // Zoom directly to the extent of sites inside Assam
     if (geojsonLayerGroup.getLayers().length > 0) {
       map.fitBounds(geojsonLayerGroup.getBounds(), { padding: [50, 50] });
     }
   }
 
-  // 5. CLIENT-SIDE INTERACTIVITY (FILTERS & INSTANT SEARCH)
+  // 5. SEARCH & FILTER INTERACTIVITY
   function applyFilters() {
     let count = 0;
 
@@ -407,12 +506,10 @@
       const p = item.properties;
       const isProt = String(p.Whether_Pr).trim().toUpperCase() === 'Y';
 
-      // Evaluation: Filter status
       let matchesFilter = true;
       if (currentFilter === 'protected' && !isProt) matchesFilter = false;
       if (currentFilter === 'unprotected' && isProt) matchesFilter = false;
 
-      // Evaluation: Search query
       const searchTarget = `${p.Site_Name || ''} ${p.UID || ''} ${p.Village || ''} ${p.District || ''}`.toLowerCase();
       let matchesSearch = searchTarget.includes(searchTerm);
 
@@ -431,13 +528,11 @@
     document.getElementById('site-counter').innerText = count;
   }
 
-  // Instant Search Listener
   document.getElementById('search-input').addEventListener('input', function(e) {
     searchTerm = e.target.value.toLowerCase().trim();
     applyFilters();
   });
 
-  // Filter Buttons Listener
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -455,11 +550,10 @@
     })
     .then(data => processGeoJSON(data))
     .catch(err => {
-      console.warn('Network fetch blocked. Showing local fallback.', err);
+      console.warn('Network fetch blocked. Showing local fallback selector.', err);
       document.getElementById('file-alert').style.display = 'block';
     });
 
-  // Fallback for file:/// local testing
   document.getElementById('manual-file').addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
